@@ -5613,7 +5613,7 @@ export class OsrsClient {
      * Maps error codes to loginIndex values.
      * Matches OSRS HealthBar.getLoginError() messages.
      */
-    handleLoginError(errorCode: number): void {
+    handleLoginError(errorCode: number, serverMessage?: string): void {
         console.log(`[OsrsClient] handleLoginError(${errorCode})`);
         const usedToken = this.loginState.loginWithToken;
         this.loginState.loginWithToken = false;
@@ -5627,6 +5627,20 @@ export class OsrsClient {
         }
         switch (errorCode) {
             case LoginErrorCode.INVALID_CREDENTIALS:
+                // Making an account, the same code also means the name is taken (NetworkBuilder
+                // checks DisplayNames.ownerOf), so keep the form open with the server's wording
+                // instead of the sign-in error, and let the player pick another name.
+                if (this.loginState.creatingAccount) {
+                    this.loginState.password = "";
+                    this.loginState.currentLoginField = 0;
+                    this.loginState.setResponse(
+                        "",
+                        serverMessage?.trim() || "That name is not available.",
+                        "Choose another name, or log in as an existing user.",
+                        "",
+                    );
+                    break;
+                }
                 this.loginState.loginIndex = LoginIndex.INVALID_CREDENTIALS;
                 this.loginState.setResponse("", "Incorrect username or password.", "", "");
                 break;
@@ -5871,6 +5885,20 @@ export class OsrsClient {
     }
 
     /**
+     * The login form has just opened: on mobile the virtual keyboard follows the field that
+     * still needs typing, and on desktop it stays away.
+     */
+    private focusLoginForm(): void {
+        if (isMobileMode) {
+            this.loginState.onMobile = true;
+            this.loginState.currentLoginField = this.loginState.username.length > 0 ? 1 : 0;
+            this.loginState.virtualKeyboardVisible = !this.loginState.canAttemptLogin();
+        } else {
+            this.loginState.virtualKeyboardVisible = false;
+        }
+    }
+
+    /**
      * Process a login action from the renderer.
      * Handles state changes and returns action string.
      */
@@ -5879,19 +5907,15 @@ export class OsrsClient {
     ): "new_user" | "existing_user" | "login" | "cancel" | "connect" | undefined {
         switch (action.type) {
             case "new_user":
-                console.log("[Login] New user clicked - would open registration");
-                this.loginState.virtualKeyboardVisible = false;
+                // There is no registration screen: the server creates the account on the first
+                // login of a name nobody holds, so a new player fills in the same form.
+                this.loginState.promptNewAccount();
+                this.focusLoginForm();
                 return "new_user";
 
             case "existing_user":
                 this.loginState.promptCredentials();
-                if (isMobileMode) {
-                    this.loginState.onMobile = true;
-                    this.loginState.currentLoginField = this.loginState.username.length > 0 ? 1 : 0;
-                    this.loginState.virtualKeyboardVisible = !this.loginState.canAttemptLogin();
-                } else {
-                    this.loginState.virtualKeyboardVisible = false;
-                }
+                this.focusLoginForm();
                 return "existing_user";
 
             case "login":
@@ -5942,6 +5966,7 @@ export class OsrsClient {
 
             case "cancel":
                 this.loginState.loginIndex = LoginIndex.WELCOME;
+                this.loginState.creatingAccount = false;
                 this.loginState.password = "";
                 this.loginState.virtualKeyboardVisible = false;
                 return "cancel";
@@ -5969,6 +5994,7 @@ export class OsrsClient {
 
             case "back":
                 this.loginState.loginIndex = LoginIndex.WELCOME;
+                this.loginState.creatingAccount = false;
                 this.loginState.virtualKeyboardVisible = false;
                 return undefined;
 

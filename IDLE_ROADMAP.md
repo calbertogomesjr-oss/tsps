@@ -30,6 +30,11 @@ Prioridades: **P0** = sem isso ninguém de fora consegue jogar; **P1** = deixa o
       espada e 10 camarões (no banco, se o inventário estiver cheio)
 - [x] **Primeiro login guiado**: o Tutorial Island já vem desligado; conta nova num mundo idle
       começa em Lumbridge, recebe 3 linhas de boas-vindas e a tela idle abre sozinha
+- [x] **Botão "New User" funcionando** (05/11/2026): abre o mesmo formulário do "Existing User",
+      com o nome em branco, o texto "Choose your username & password." e o botão **Create**. Não
+      existe tela de registro porque o servidor cria a conta no primeiro login
+      (`NetworkBuilder`: nome digitado sem credencial salva); se o nome já for de outra conta,
+      o formulário continua aberto com "That name is not available."
 - [x] **Abrir a tela idle sem comando**: botão **Idle** na aba do diário (Character Summary)
 - [x] **Reinício e crash do servidor**: quem estava jogando recebe o progresso offline ao voltar
       (testado no jogo com SIGTERM e com `kill -9`; num crash, a partir do último salvamento
