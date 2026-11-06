@@ -389,7 +389,7 @@ function OsrsClientApp() {
                         response.error,
                     );
                     if (response.errorCode !== undefined) {
-                        client.handleLoginError(response.errorCode);
+                        client.handleLoginError(response.errorCode, response.error);
                     } else {
                         client.onLoginFailed(response.error || "Login failed");
                     }
