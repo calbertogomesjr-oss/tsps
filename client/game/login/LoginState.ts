@@ -237,6 +237,13 @@ export class LoginState {
     /** Current login screen index (which dialog to show) */
     loginIndex: LoginIndex = LoginIndex.WELCOME;
 
+    /**
+     * The login form is making an account instead of signing one in. The server creates the
+     * account on its first login (NetworkBuilder: a typed name with no credentials), so it is
+     * the same form and the same packet; only the wording and the button differ.
+     */
+    creatingAccount: boolean = false;
+
     // ========== Network Protocol State ==========
 
     /** Network handshake state (0-22, matches reference loginState) */
@@ -506,6 +513,7 @@ export class LoginState {
      */
     reset(): void {
         this.loginIndex = LoginIndex.WELCOME;
+        this.creatingAccount = false;
         this.networkState = 0;
         this.username = "";
         this.password = "";
@@ -557,12 +565,27 @@ export class LoginState {
      */
     promptCredentials(preserveUsername: boolean = true): void {
         this.loginIndex = LoginIndex.LOGIN_FORM;
+        this.creatingAccount = false;
         if (!preserveUsername) {
             this.username = "";
             this.password = "";
         }
         this.currentLoginField = this.username.length > 0 ? 1 : 0;
         this.setResponse("", "Enter your username & password.", "", "");
+    }
+
+    /**
+     * Prompt a new player for the name and password of a new account. There is no separate
+     * registration: the server makes the account on the first login and refuses a name another
+     * account already holds, so the form only has to ask for a name of one's own.
+     */
+    promptNewAccount(): void {
+        this.loginIndex = LoginIndex.LOGIN_FORM;
+        this.creatingAccount = true;
+        this.username = "";
+        this.password = "";
+        this.currentLoginField = 0;
+        this.setResponse("", "Choose your username & password.", "Your account is made as you log in.", "");
     }
 
     /**

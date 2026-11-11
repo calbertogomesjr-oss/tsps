@@ -169,7 +169,13 @@ export function drawLoginForm(host: LoginRendererHost, ctx: RenderContext, state
 
         // Buttons (hide when connecting)
         if (!isConnecting) {
-            drawButton(host, ctx, host.loginBoxCenter - 80, LOGIN_FORM_BUTTON_Y, "Login");
+            drawButton(
+                host,
+                ctx,
+                host.loginBoxCenter - 80,
+                LOGIN_FORM_BUTTON_Y,
+                state.creatingAccount ? "Create" : "Login",
+            );
             drawButton(host, ctx, host.loginBoxCenter + 80, LOGIN_FORM_BUTTON_Y, "Cancel");
         }
 
