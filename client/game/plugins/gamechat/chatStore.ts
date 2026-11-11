@@ -20,6 +20,9 @@ export type ChatLine = {
     id: number;
     /** When it arrived here, not when the server sent it: the event carries no time. */
     at: number;
+    /** The clock as the line shows it, formatted once here rather than on every render.
+     *  Intl formatting is not cheap, and the log redraws far more often than it grows. */
+    clock: string;
     channel: ChatChannel;
     /** The speaker, for the channels that have one. */
     name: string | null;
@@ -29,6 +32,8 @@ export type ChatLine = {
 };
 
 const MAX_LINES = 250;
+
+const CLOCK = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 type Listener = () => void;
 
 let lines: ChatLine[] = [];
@@ -60,9 +65,11 @@ export function getChatLines(): ChatLine[] {
 export function addChatLine(type: number, name: string, text: string): void {
     const clean = plain(text).trim();
     if (!clean) return;
+    const at = Date.now();
     const line: ChatLine = {
         id: nextId++,
-        at: Date.now(),
+        at,
+        clock: CLOCK.format(at),
         channel: channelOf(type),
         name: plain(name).trim() || null,
         text: clean,

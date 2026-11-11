@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { GameState } from "../../login/GameState";
 import type { OsrsClient } from "../../OsrsClient";
 import { useSubscribedGameState } from "../../useSubscribedGameState";
@@ -15,9 +15,6 @@ const TABS: Array<{ key: Filter; label: string }> = [
     { key: "private", label: "Privado" },
 ];
 
-const time = (at: number) =>
-    new Date(at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
 /**
  * The chatbox, as a panel rather than the parchment the canvas draws.
  *
@@ -28,7 +25,7 @@ const time = (at: number) =>
  *
  * The canvas box stays underneath, still fed by the game; this covers it.
  */
-export function ChatPanel({ osrsClient }: { osrsClient: OsrsClient }) {
+export const ChatPanel = memo(function ChatPanel({ osrsClient }: { osrsClient: OsrsClient }) {
     const gameState = useSubscribedGameState(osrsClient.stateMachine);
     const lines = useSyncExternalStore(subscribeChat, getChatLines, getChatLines);
     const [filter, setFilter] = useState<Filter>("all");
@@ -49,17 +46,35 @@ export function ChatPanel({ osrsClient }: { osrsClient: OsrsClient }) {
         return totals;
     }, [lines]);
 
-    // Stick to the newest line, which is what a log is for.
+    // Stick to the newest line, which is what a log is for - but writing scrollTop forces layout,
+    // so only when there is something new, and never while the reader has scrolled up to read.
+    const scrolled = useRef(-1);
     useEffect(() => {
         const log = logRef.current;
-        if (log) log.scrollTop = log.scrollHeight;
+        if (!log) return;
+        // A log that has just been unfolded is a fresh element at the top: it always goes down.
+        const reopened = scrolled.current < 0;
+        const grew = shown.length !== scrolled.current;
+        scrolled.current = shown.length;
+        const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+        if (reopened || (grew && atBottom)) log.scrollTop = log.scrollHeight;
     }, [shown, collapsed]);
 
-    // Looking at a channel marks it read; "Tudo" marks everything.
+    // Folding throws the log element away; the next one starts at the top and must be sent down.
     useEffect(() => {
-        setSeen((previous) =>
-            filter === "all" ? { ...counts } : { ...previous, [filter]: counts[filter] },
-        );
+        if (collapsed) scrolled.current = -1;
+    }, [collapsed]);
+
+    // Looking at a channel marks it read; "Tudo" marks everything. The equality check matters:
+    // a fresh object every message means a second render every message, for nothing.
+    useEffect(() => {
+        setSeen((previous) => {
+            const next = filter === "all" ? counts : { ...previous, [filter]: counts[filter] };
+            const same = next.game === previous.game
+                && next.public === previous.public
+                && next.private === previous.private;
+            return same ? previous : next;
+        });
     }, [filter, counts]);
 
     // Only once the player is actually in the world: a chatbox over the loading bar or the login
@@ -130,15 +145,22 @@ export function ChatPanel({ osrsClient }: { osrsClient: OsrsClient }) {
             )}
         </div>
     );
-}
+});
 
-function Line({ line }: { line: ChatLine }) {
+/**
+ * One line, memoised.
+ *
+ * The HUD is rebuilt whenever the game container re-renders, and the container re-renders several
+ * times a second. Without this every line in the log - up to 250 of them - was rebuilt each time,
+ * on the same thread that draws the game.
+ */
+const Line = memo(function Line({ line }: { line: ChatLine }) {
     const kind = line.milestone ? "is-milestone" : `is-${line.channel}`;
     return (
         <p className={`gc__line ${kind}`}>
-            <span className="gc__time">{time(line.at)}</span>
+            <span className="gc__time">{line.clock}</span>
             {line.name && line.channel !== "game" && <b className="gc__who">{line.name}:</b>}
             <span className="gc__text">{line.text}</span>
         </p>
     );
-}
+});
