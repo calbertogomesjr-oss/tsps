@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { sendChat } from "../../../network/ServerConnection";
 import { getIdleState, subscribeIdleState, type IdleState } from "./idleState";
 import "./IdleHudOverlay.css";
@@ -24,7 +24,7 @@ function rate(xpPerHour: number | null): string {
  * accessible way in — before this, the only ways were a command or a button two taps deep in the
  * journal tab.
  */
-export function IdleHudOverlay() {
+export const IdleHudOverlay = memo(function IdleHudOverlay() {
     const [state, setState] = useState<IdleState | null>(getIdleState());
     useEffect(() => subscribeIdleState(setState), []);
 
@@ -101,4 +101,4 @@ export function IdleHudOverlay() {
             </button>
         </div>
     );
-}
+});
